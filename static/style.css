@@ -125,3 +125,15 @@ button:disabled { opacity: 0.5; cursor: not-allowed; }
 .note.bad { color: var(--danger); }
 .soon { opacity: 0.75; border-style: dashed; }
 .tag { font-size: 11px; font-weight: 600; color: var(--accent-2); border: 1px solid rgba(255, 181, 71, 0.4); border-radius: 999px; padding: 1px 8px; margin-left: 6px; vertical-align: 2px; }
+
+/* ---------- yapper ---------- */
+.card-head { display: flex; align-items: center; justify-content: space-between; gap: 8px; }
+.yap-now { display: flex; gap: 8px; }
+.yap-now select {
+  flex: 1; min-width: 0; font: inherit; font-size: 14px; color: var(--text);
+  background: var(--bg); border: 1px solid var(--line); border-radius: 12px; padding: 0 10px; min-height: 44px;
+}
+.yap-now select:focus { outline: none; border-color: var(--accent); }
+#yap-card.off .hint { opacity: 0.6; }
+.msg.yap { border-color: rgba(255, 181, 71, 0.35); }
+.msg.yap .who { color: var(--accent-2); }

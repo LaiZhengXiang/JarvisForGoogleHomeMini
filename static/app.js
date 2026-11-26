@@ -5,6 +5,9 @@ const messages = $("messages");
 const chatInput = $("chat-input");
 const speakToggle = $("speak-toggle");
 
+let shown = 0;         // how many history messages are on screen
+let chatting = false;  // true while waiting for a chat reply
+
 // ---------- small helpers ----------
 async function api(path, body) {
   const res = await fetch(path, body === undefined ? {} : {
@@ -52,6 +55,7 @@ $("chat-form").addEventListener("submit", async (e) => {
   autoGrow(chatInput);
   addMessage("user", text);
   const typing = showTyping();
+  chatting = true;  // pause the history check so this message isn't shown twice
   document.body.classList.add("thinking");
   $("send-btn").disabled = true;
 
@@ -63,6 +67,8 @@ $("chat-form").addEventListener("submit", async (e) => {
     typing.remove();
     addMessage("error", err.message);
   } finally {
+    try { shown = (await api("/api/history")).history.length; } catch {}
+    chatting = false;
     document.body.classList.remove("thinking");
     $("send-btn").disabled = false;
     chatInput.focus();
@@ -80,6 +86,7 @@ chatInput.addEventListener("input", () => autoGrow(chatInput));
 $("clear-btn").addEventListener("click", async () => {
   await api("/api/history/clear", {});
   messages.innerHTML = "";
+  shown = 0;
   addMessage("jarvis", "Fresh start. What's on your mind?");
 });
 
@@ -128,14 +135,66 @@ async function refreshStatus() {
 }
 
 // ---------- start ----------
+
+
+function renderMessage(m, prev) {
+  const div = addMessage(m.role === "user" ? "user" : "jarvis", m.content);
+  // A JARVIS message that doesn't follow one of yours = he started it himself (a yap).
+  if (m.role !== "user" && (!prev || prev.role !== "user")) {
+    div.classList.add("yap");
+    div.querySelector(".who").textContent = "JARVIS · dropped by";
+  }
+}
+
 async function loadHistory() {
+  if (chatting) return;
   try {
     const { history } = await api("/api/history");
-    for (const m of history) addMessage(m.role === "user" ? "user" : "jarvis", m.content);
+    for (let i = shown; i < history.length; i++) renderMessage(history[i], history[i - 1]);
+    shown = history.length;
   } catch {}
 }
 
+// ---------- yapper ----------
+async function refreshYapper() {
+  try {
+    const y = await api("/api/yapper");
+    $("yap-toggle").checked = y.settings.enabled;
+    $("yap-card").classList.toggle("off", !y.settings.enabled);
+    let line = `Today: ${y.yaps_today} yap${y.yaps_today === 1 ? "" : "s"}. `;
+    if (!y.settings.enabled) line += "Yapper is off.";
+    else if (y.next_at) {
+      const mins = Math.round((new Date(y.next_at) - Date.now()) / 60000);
+      line += mins <= 0 ? "Next one any moment…" : `Next one in about ${mins} min.`;
+    }
+    $("yap-next").textContent = line;
+  } catch {}
+}
+
+$("yap-toggle").addEventListener("change", async () => {
+  await api("/api/yapper/settings", { enabled: $("yap-toggle").checked });
+  refreshYapper();
+});
+
+$("yap-btn").addEventListener("click", async () => {
+  const note = $("yap-note");
+  $("yap-btn").disabled = true;
+  note.className = "note";
+  note.textContent = "JARVIS is thinking of something to say…";
+  try {
+    await api("/api/yapper/now", { topic: $("yap-topic").value || null });
+    // the yap lands in the chat a few seconds later (picked up by the history check)
+    setTimeout(() => { note.textContent = ""; $("yap-btn").disabled = false; }, 6000);
+  } catch (err) {
+    note.className = "note bad";
+    note.textContent = err.message;
+    $("yap-btn").disabled = false;
+  }
+});
+
 loadHistory();
 refreshStatus();
+refreshYapper();
 setInterval(refreshStatus, 10000);
+setInterval(() => { loadHistory(); refreshYapper(); }, 5000);  // pick up yaps JARVIS starts himself
 chatInput.focus();

@@ -12,6 +12,9 @@ Endpoints:
                                                               and (optionally) says it
   GET  /api/history  the conversation so far (the dashboard loads it on start)
   POST /api/history/clear   start a new conversation
+  GET  /api/yapper          yapper settings, next yap time, today's count
+  POST /api/yapper/settings {"enabled": true, "min_minutes": 5, ...}
+  POST /api/yapper/now      {"topic": "weather" | "news" | "market" | "fun" | null}
 """
 
 from contextlib import asynccontextmanager
@@ -24,20 +27,27 @@ from fastapi.staticfiles import StaticFiles
 from pydantic import BaseModel
 
 import brain
+import db
+import yapper as yap
 from mouth import Mouth, MouthError
 
 mouth: Mouth | None = None
+yapper: yap.Yapper | None = None
 history: list[dict] = []  # the conversation so far (kept in memory until step 5 adds SQLite)
 HISTORY_LIMIT = 20        # only send the last 20 messages to the AI, to keep it fast
 
 
 @asynccontextmanager
 async def lifespan(app: FastAPI):
-    global mouth
+    global mouth, yapper
     mouth = Mouth()  # start the MP3 web server when JARVIS wakes up
     mouth.warm_up()  # and look for the Home Mini straight away
+    # Yaps also go into the chat, so you can reply "tell me more".
+    yapper = yap.Yapper(mouth, on_yap=lambda text: history.append({"role": "assistant", "content": text}))
+    yapper.start()
     print("[jarvis] awake")
     yield
+    yapper.stop()
     mouth.close()
     print("[jarvis] asleep")
 
@@ -55,6 +65,10 @@ def dashboard():
 
 class SayRequest(BaseModel):
     text: str
+
+
+class YapRequest(BaseModel):
+    topic: str | None = None
 
 
 class ChatRequest(BaseModel):
@@ -84,6 +98,29 @@ def get_history():
 def clear_history():
     history.clear()
     return {"cleared": True}
+
+
+@app.get("/api/yapper")
+def yapper_status():
+    return {
+        "settings": yap.settings(),
+        "next_at": yapper.next_at.isoformat(timespec="seconds") if yapper.next_at else None,
+        "yaps_today": db.yaps_today(),
+        "recent": db.recent_yaps(5),
+    }
+
+
+@app.post("/api/yapper/settings")
+def yapper_settings(changes: dict):
+    yap.update_settings(changes)
+    yapper._plan_next()  # new timing rules -> pick a new next time
+    return yapper_status()
+
+
+@app.post("/api/yapper/now")
+def yapper_now(req: YapRequest, background: BackgroundTasks):
+    background.add_task(yapper.yap_now, req.topic)  # thinking + speaking takes a while
+    return {"started": True}
 
 
 @app.post("/api/say")

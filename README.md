@@ -9,7 +9,8 @@ The laptop is the brain (Python); the Home Mini is just the mouth.
 - [x] **2. Timer** – the script runs by itself at 8am
 - [x] **3. Brain server** – JARVIS runs nonstop (FastAPI); chat with AI (Groq first, Gemini backup)
 - [x] **4. Dashboard** – a chat page and a "say this" box, like UniLife Copilot
-- [ ] **5. Reminders** – any time (8:00, 11:45, ...), once or daily, set from the dashboard or by chat
+- [x] **5a. Yapper** – JARVIS drops by at random times with Penang weather, Malaysia news, hot stock news and fun facts
+- [ ] **5b. Reminders** – any time (8:00, 11:45, ...), once or daily, set from the dashboard or by chat
 - [ ] **6. Agent** – UniLife deadlines, news, PDFs, songs
 
 ## Run step 1
@@ -86,4 +87,24 @@ Change them in `VOICES` / `VOICE_TUNING` at the top of `say_hello.py`.
 
 **Radio effect:** `radio.py` gives the voice a light earpiece / comms-channel sound (band-pass filter, a little drive and hiss).
 Turn it off with `RADIO_EFFECT = False` in `say_hello.py`, or change the strength in `radio.SETTINGS`.
+
+## Step 5a: the yapper
+
+JARVIS talks to you by himself at random times, like a chatty friend. Turn him on/off, see the next yap,
+or press **Yap now** in the dashboard's Yapper card. Yaps also show up in the chat, so you can reply.
+
+| Topic | Facts from (free, no key, 0 AI tokens) |
+|---|---|
+| Weather | Open-Meteo forecast for Penang |
+| Malaysia news | Google News Malaysia RSS (headlines only) |
+| Market | Google News: big stock moves in the last day (global + Bursa), explained for a beginner |
+| Fun | the AI (true, textbook-level facts only) |
+
+**Token saving:** code fetches the facts and caches them (weather 30 min, news 1 hour); the AI only gets a
+tiny summary and writes 1-3 sentences (~300-500 tokens a yap). Plus a daily limit, quiet hours (9am-11pm),
+and no yapping while the Home Mini plays something else. Already-told headlines and facts are remembered
+in `jarvis.db` (SQLite, never committed) so he doesn't repeat himself.
+
+Settings (in `yapper.DEFAULTS`, changeable via `POST /api/yapper/settings`): every 5-10 min while testing -
+set `min_minutes`/`max_minutes` to 60/120 for normal use.
 
