@@ -28,11 +28,34 @@ PORT = 8765
 AUDIO_DIR = Path(__file__).parent / "audio"
 
 
+LEAD_IN_SECONDS = 1.0  # silence before the words, so the speaker is awake when they start
+FRAME_BYTES = 192      # gTTS MP3: 64 kbps, 24 kHz -> each frame is 192 bytes...
+FRAME_SECONDS = 0.024  # ...and lasts 24 ms
+
+
+def pick_language(text: str) -> str:
+    """Any Chinese character -> Mandarin voice, otherwise English.
+    (The Mandarin voice can still read English words mixed in.)"""
+    if any("一" <= ch <= "鿿" for ch in text):
+        return "zh-CN"
+    return "en"
+
+
 def make_mp3(text: str) -> Path:
-    """Job 1: text -> MP3 file."""
+    """Job 1: text -> MP3 file, with a little silence in front.
+
+    The Home Mini's amplifier sleeps when idle and swallows the first moment of
+    sound while it wakes up. Without the silence, short lines like "hi" vanish.
+    """
     AUDIO_DIR.mkdir(exist_ok=True)
     mp3 = AUDIO_DIR / "message.mp3"
-    gTTS(text=text, lang="en").save(mp3)
+    gTTS(text=text, lang=pick_language(text)).save(mp3)
+
+    speech = mp3.read_bytes()
+    header = speech[:4]  # copy the exact MP3 format gTTS used
+    silent_frame = header + bytes(FRAME_BYTES - 4)  # all zeros after the header = silence
+    frames = int(LEAD_IN_SECONDS / FRAME_SECONDS)
+    mp3.write_bytes(silent_frame * frames + speech)
     return mp3
 
 
@@ -50,9 +73,16 @@ class AudioHandler(http.server.SimpleHTTPRequestHandler):
     def __init__(self, *args, **kwargs):
         super().__init__(*args, directory=str(AUDIO_DIR), **kwargs)
 
+    def log_request(self, code="-", size="-"):
+        # Only count a real, successful download (code 200), not errors.
+        if str(getattr(code, "value", code)) == "200":
+            print(f"  speaker downloaded the MP3 (from {self.client_address[0]})")
+            downloaded.set()
+        else:
+            print(f"  speaker asked for the MP3 but got error {code}")
+
     def log_message(self, fmt, *args):
-        print(f"  speaker downloaded the MP3 (from {self.client_address[0]})")
-        downloaded.set()
+        pass  # keep the screen quiet
 
 
 def start_web_server() -> http.server.ThreadingHTTPServer:
@@ -82,35 +112,43 @@ def find_speaker():
     return casts[0], browser
 
 
-def say(text: str) -> None:
+def speak(speaker, text: str) -> bool:
+    """Job 3b: make the speaker say one line. Returns False if it never downloaded the MP3.
+    The web server must already be running."""
     mp3 = make_mp3(text)
-    server = start_web_server()
-    url = f"http://{laptop_ip()}:{PORT}/{mp3.name}?t={int(time.time())}"  # ?t= stops caching
-
-    speaker, browser = find_speaker()
-    speaker.wait()
+    url = f"http://{laptop_ip()}:{PORT}/{mp3.name}?t={time.time()}"  # ?t= stops caching
     print(f'Speaking on "{speaker.cast_info.friendly_name}": {text}')
 
-    # Job 3b: tell the Home Mini to play our MP3.
     # Sometimes the first request is lost while the speaker starts its player,
     # so we try up to 3 times until the speaker actually downloads the file.
     mc = speaker.media_controller
+    downloaded.clear()
     for attempt in range(3):
         mc.play_media(url, "audio/mpeg")
         if downloaded.wait(timeout=8):
             break
         print("  no download yet, asking again...")
     else:
+        return False
+
+    # Wait while it talks: number of frames x 24 ms each.
+    seconds = mp3.stat().st_size / FRAME_BYTES * FRAME_SECONDS
+    time.sleep(seconds + 2)
+    return True
+
+
+def say(text: str) -> None:
+    """Say one line, then tidy up."""
+    server = start_web_server()
+    speaker, browser = find_speaker()
+    speaker.wait()
+    try:
+        ok = speak(speaker, text)
+    finally:
         browser.stop_discovery()
         server.shutdown()
+    if not ok:
         sys.exit("The speaker never downloaded the MP3. Check Windows Firewall lets Python in.")
-
-    # Wait while it talks. gTTS MP3s are about 4 KB per second of speech.
-    seconds = mp3.stat().st_size / 4000
-    time.sleep(seconds + 2)
-
-    browser.stop_discovery()
-    server.shutdown()
     print("Done.")
 
 

@@ -23,5 +23,14 @@ python say_hello.py
 python say_hello.py "Any sentence you like"
 ```
 
+### Talk mode: type anything, the Home Mini says it
+
+```powershell
+python talk.py
+```
+
+Press Enter on an empty line (or type `quit`) to stop.
+Lines with Chinese characters (e.g. `吃饱了吗`) are spoken in Mandarin automatically.
+
 If Windows asks whether Python may use the network, allow it on **private** networks –
 the Home Mini has to download the MP3 from your laptop.
