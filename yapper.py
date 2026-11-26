@@ -36,7 +36,7 @@ DEFAULTS = {
 # Default Media Receiver (our MP3s) and the idle screen. Any other app = something else is playing.
 OUR_APPS = {None, "CC1AD845", "E8C28D3C"}
 
-STYLE = ("Call him Zheng Xiang. You're yapping to him out of the blue, like a chatty friend dropping by. "
+STYLE = ("Call him Alex. You're yapping to him out of the blue, like a chatty friend dropping by. "
          "He didn't ask, so open casually (\"Hey,\", \"Oh, by the way,\", \"Quick one,\"). "
          "1-3 short spoken sentences, English, no lists, no markdown. Local time: {now}.")
 

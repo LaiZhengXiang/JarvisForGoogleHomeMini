@@ -5,10 +5,10 @@ The laptop is the brain (Python); the Home Mini is just the mouth.
 
 ## Roadmap
 
-- [x] **1. Mouth test** – Python makes the Home Mini say "Hello Zheng Xiang"
+- [x] **1. Mouth test** – Python makes the Home Mini say "Hello Alex"
 - [x] **2. Timer** – the script runs by itself at 8am
 - [x] **3. Brain server** – JARVIS runs nonstop (FastAPI); chat with AI (Groq first, Gemini backup)
-- [x] **4. Dashboard** – a chat page and a "say this" box, like UniLife Copilot
+- [x] **4. Dashboard** – a JARVIS-style HUD: animated core, chat, clock, Penang weather, yapper and "say this"
 - [x] **5a. Yapper** – JARVIS drops by at random times with Penang weather, Malaysia news, hot stock news and fun facts
 - [ ] **5b. Reminders** – any time (8:00, 11:45, ...), once or daily, set from the dashboard or by chat
 - [ ] **6. Agent** – UniLife deadlines, news, PDFs, songs

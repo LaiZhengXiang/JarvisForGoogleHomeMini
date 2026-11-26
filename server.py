@@ -12,6 +12,7 @@ Endpoints:
                                                               and (optionally) says it
   GET  /api/history  the conversation so far (the dashboard loads it on start)
   POST /api/history/clear   start a new conversation
+  GET  /api/weather         Penang weather (for the dashboard)
   GET  /api/yapper          yapper settings, next yap time, today's count
   POST /api/yapper/settings {"enabled": true, "min_minutes": 5, ...}
   POST /api/yapper/now      {"topic": "weather" | "news" | "market" | "fun" | null}
@@ -28,6 +29,7 @@ from pydantic import BaseModel
 
 import brain
 import db
+import sources
 import yapper as yap
 from mouth import Mouth, MouthError
 
@@ -98,6 +100,14 @@ def get_history():
 def clear_history():
     history.clear()
     return {"cleared": True}
+
+
+@app.get("/api/weather")
+def weather():
+    try:
+        return sources.weather_data()
+    except Exception as e:
+        raise HTTPException(503, f"Weather unavailable: {e}")
 
 
 @app.get("/api/yapper")

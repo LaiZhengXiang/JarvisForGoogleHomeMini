@@ -264,4 +264,4 @@ def say(text: str) -> None:
 
 
 if __name__ == "__main__":
-    say(" ".join(sys.argv[1:]) or "Hello Zheng Xiang")
+    say(" ".join(sys.argv[1:]) or "Hello Alex")

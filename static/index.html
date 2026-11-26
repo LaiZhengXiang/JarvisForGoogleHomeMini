@@ -4,93 +4,139 @@
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
   <title>JARVIS</title>
-  <link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 32'><circle cx='16' cy='16' r='11' fill='none' stroke='%234fd1ff' stroke-width='3'/><circle cx='16' cy='16' r='4' fill='%234fd1ff'/></svg>">
+  <link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 32'><circle cx='16' cy='16' r='12' fill='none' stroke='%2345d6ff' stroke-width='2.5' stroke-dasharray='5 3'/><circle cx='16' cy='16' r='5' fill='%2345d6ff'/></svg>">
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Orbitron:wght@500;700&family=Share+Tech+Mono&display=swap" rel="stylesheet">
   <link rel="stylesheet" href="/static/style.css">
 </head>
-<body>
-  <div class="app">
-    <header class="top">
-      <div class="brand">
-        <span class="reactor" aria-hidden="true"></span>
-        <div>
-          <h1>JARVIS</h1>
-          <p class="sub">Personal assistant</p>
-        </div>
+<body class="idle">
+  <div class="grid-bg" aria-hidden="true"></div>
+  <div class="scanlines" aria-hidden="true"></div>
+
+  <header class="topbar">
+    <div class="brand">
+      <span class="logo" aria-hidden="true"></span>
+      <div>
+        <h1>J.A.R.V.I.S</h1>
+        <p class="mono dim">PERSONAL OS · v1.0</p>
       </div>
+    </div>
+    <div class="topbar-line" aria-hidden="true"></div>
+    <div class="top-right">
+      <span class="mono dim">USER: <b class="hi">ALEX</b></span>
       <div class="status" id="status" title="Speaker status">
-        <span class="dot"></span><span id="status-text">Connecting…</span>
+        <span class="dot"></span><span id="status-text" class="mono">CONNECTING…</span>
       </div>
-    </header>
+    </div>
+  </header>
 
-    <main class="layout">
-      <section class="chat" aria-label="Chat with JARVIS">
-        <div class="chat-head">
-          <h2>Chat</h2>
-          <div class="chat-tools">
-            <label class="switch" title="Also say JARVIS's replies on the Home Mini">
-              <input type="checkbox" id="speak-toggle" checked>
-              <span class="track"><span class="thumb"></span></span>
-              <span class="switch-label">Speak replies</span>
-            </label>
-            <button class="ghost" id="clear-btn" title="Start a new conversation">New chat</button>
-          </div>
-        </div>
-
-        <div class="messages" id="messages" aria-live="polite">
-          <div class="empty" id="empty">
-            <span class="reactor big" aria-hidden="true"></span>
-            <p>Good to see you, Zheng Xiang.<br>Ask me anything — in English or 中文.</p>
-          </div>
-        </div>
-
-        <form class="composer" id="chat-form">
-          <textarea id="chat-input" rows="1" placeholder="Message JARVIS…" title="Enter to send, Shift+Enter for a new line" autocomplete="off"></textarea>
-          <button type="submit" class="primary" id="send-btn" aria-label="Send">
-            <svg viewBox="0 0 24 24" width="20" height="20" aria-hidden="true"><path d="M4 12l16-8-6 16-2.5-6.5L4 12z" fill="currentColor"/></svg>
-          </button>
-        </form>
+  <main class="hud">
+    <!-- ================= LEFT: clock, weather, yapper ================= -->
+    <aside class="col left">
+      <section class="panel">
+        <h2>Local Time</h2>
+        <div class="clock mono" id="clock">--:--<small>:--</small></div>
+        <p class="mono dim" id="date">—</p>
+        <p class="mono dim">PENANG · GMT+8</p>
       </section>
 
-      <aside class="side">
-        <section class="card">
-          <h2>Say this</h2>
-          <p class="hint">The Home Mini says exactly what you type. No AI.</p>
-          <form id="say-form">
-            <textarea id="say-input" rows="3" placeholder="e.g. Dinner is ready! 吃饭啦！"></textarea>
-            <button type="submit" class="primary wide" id="say-btn">🔊 Say it</button>
-          </form>
-          <p class="note" id="say-note"></p>
-        </section>
-
-        <section class="card" id="yap-card">
-          <div class="card-head">
-            <h2>Yapper</h2>
-            <label class="switch" title="Let JARVIS talk to you by himself">
-              <input type="checkbox" id="yap-toggle" checked>
-              <span class="track"><span class="thumb"></span></span>
-            </label>
+      <section class="panel" id="weather-panel">
+        <h2>Weather · Penang</h2>
+        <div class="wx">
+          <div class="wx-temp mono" id="wx-temp">--°</div>
+          <div>
+            <p class="wx-desc" id="wx-desc">Loading…</p>
+            <p class="mono dim" id="wx-meta">—</p>
           </div>
-          <p class="hint" id="yap-next">JARVIS drops by with weather, news, market and fun facts.</p>
-          <div class="yap-now">
-            <select id="yap-topic" aria-label="Topic">
-              <option value="">Surprise me</option>
-              <option value="weather">🌦 Weather</option>
-              <option value="news">📰 Malaysia news</option>
-              <option value="market">📈 Market</option>
-              <option value="fun">✨ Fun fact</option>
-            </select>
-            <button class="primary" id="yap-btn">Yap now</button>
-          </div>
-          <p class="note" id="yap-note"></p>
-        </section>
+        </div>
+        <div class="rainbars" id="rainbars" aria-label="Chance of rain, next hours"></div>
+      </section>
 
-        <section class="card soon">
-          <h2>Reminders <span class="tag">Step 5</span></h2>
-          <p class="hint">Coming next: “11:45 – submit lab”, “12:00 daily – lunch”. JARVIS will speak them on time.</p>
-        </section>
-      </aside>
-    </main>
-  </div>
+      <section class="panel" id="yap-card">
+        <div class="panel-head">
+          <h2>Yapper</h2>
+          <label class="switch" title="Let JARVIS talk to you by himself">
+            <input type="checkbox" id="yap-toggle" checked>
+            <span class="track"><span class="thumb"></span></span>
+          </label>
+        </div>
+        <p class="mono dim small" id="yap-next">—</p>
+        <div class="row">
+          <select id="yap-topic" aria-label="Topic">
+            <option value="">Surprise me</option>
+            <option value="weather">Weather</option>
+            <option value="news">Malaysia news</option>
+            <option value="market">Hot stocks</option>
+            <option value="fun">Fun fact</option>
+          </select>
+          <button class="btn" id="yap-btn">Yap now</button>
+        </div>
+        <p class="note" id="yap-note"></p>
+      </section>
+    </aside>
+
+    <!-- ================= CENTER: the core ================= -->
+    <section class="col center">
+      <div class="core-wrap">
+        <svg class="core" viewBox="0 0 400 400" aria-hidden="true">
+          <defs>
+            <radialGradient id="glow" cx="50%" cy="50%" r="50%">
+              <stop offset="0%" stop-color="#d9f6ff" stop-opacity="1"/>
+              <stop offset="35%" stop-color="#45d6ff" stop-opacity="0.85"/>
+              <stop offset="100%" stop-color="#45d6ff" stop-opacity="0"/>
+            </radialGradient>
+          </defs>
+          <circle class="ring r1" cx="200" cy="200" r="190"/>
+          <circle class="ring r2" cx="200" cy="200" r="172"/>
+          <g class="ticks" id="ticks"></g>
+          <circle class="ring r3" cx="200" cy="200" r="128"/>
+          <circle class="ring r4" cx="200" cy="200" r="108"/>
+          <circle class="halo" cx="200" cy="200" r="95" fill="url(#glow)"/>
+          <circle class="ring r5" cx="200" cy="200" r="62"/>
+          <circle class="heart" cx="200" cy="200" r="34"/>
+        </svg>
+        <div class="core-label mono" id="core-label">STANDING BY</div>
+      </div>
+
+      <div class="wave" aria-hidden="true" id="wave"></div>
+      <p class="caption" id="caption">Good to see you, Alex. Ask me anything, in English or 中文.</p>
+
+      <form class="composer" id="chat-form">
+        <textarea id="chat-input" rows="1" placeholder="Talk to JARVIS…" title="Enter to send, Shift+Enter for a new line" autocomplete="off"></textarea>
+        <button type="submit" class="btn send" id="send-btn" aria-label="Send">
+          <svg viewBox="0 0 24 24" width="20" height="20" aria-hidden="true"><path d="M4 12l16-8-6 16-2.5-6.5L4 12z" fill="currentColor"/></svg>
+        </button>
+      </form>
+      <label class="switch center-switch" title="Also say JARVIS's replies on the Home Mini">
+        <input type="checkbox" id="speak-toggle" checked>
+        <span class="track"><span class="thumb"></span></span>
+        <span class="mono dim small">VOICE OUTPUT</span>
+      </label>
+    </section>
+
+    <!-- ================= RIGHT: transcript, say this ================= -->
+    <aside class="col right">
+      <section class="panel transcript">
+        <div class="panel-head">
+          <h2>Transcript</h2>
+          <button class="link" id="clear-btn" title="Start a new conversation">New chat</button>
+        </div>
+        <div class="messages" id="messages" aria-live="polite">
+          <p class="mono dim small" id="empty">No messages yet.</p>
+        </div>
+      </section>
+
+      <section class="panel">
+        <h2>Say This</h2>
+        <form id="say-form">
+          <textarea id="say-input" rows="2" placeholder="Dinner is ready! 吃饭啦！"></textarea>
+          <button type="submit" class="btn wide" id="say-btn">Broadcast</button>
+        </form>
+        <p class="note" id="say-note"></p>
+      </section>
+    </aside>
+  </main>
 
   <script src="/static/app.js"></script>
 </body>

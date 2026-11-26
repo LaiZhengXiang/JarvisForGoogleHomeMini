@@ -41,11 +41,12 @@ WEATHER_WORDS = {
 }
 
 
-def weather() -> str:
+def weather_data() -> dict:
+    """Penang weather as numbers (for the dashboard). Cached 30 minutes."""
     def fetch():
         r = requests.get("https://api.open-meteo.com/v1/forecast", params={
-            "latitude": LAT, "longitude": LON, "timezone": "Asia/Kuala_Lumpur", "forecast_days": 1,
-            "current": "temperature_2m,apparent_temperature,weather_code,relative_humidity_2m",
+            "latitude": LAT, "longitude": LON, "timezone": "Asia/Kuala_Lumpur", "forecast_days": 2,
+            "current": "temperature_2m,apparent_temperature,weather_code,relative_humidity_2m,wind_speed_10m",
             "hourly": "precipitation_probability,weather_code,temperature_2m",
         }, timeout=TIMEOUT, headers=HEADERS)
         r.raise_for_status()
@@ -53,15 +54,35 @@ def weather() -> str:
 
     d = _cached("weather", 30 * 60, fetch)
     now = d["current"]
-    hour_now = datetime.now().hour
-    later = []
-    for t, rain, code in zip(d["hourly"]["time"], d["hourly"]["precipitation_probability"], d["hourly"]["weather_code"]):
-        h = int(t[11:13])
-        if h > hour_now and rain is not None and rain >= 40:
-            later.append(f"{h}:00 {rain}% chance ({WEATHER_WORDS.get(code, 'rain')})")
-    summary = (f"{CITY} now: {now['temperature_2m']:.0f}°C, feels like {now['apparent_temperature']:.0f}°C, "
-               f"{WEATHER_WORDS.get(now['weather_code'], 'unknown')}, humidity {now['relative_humidity_2m']}%.")
-    summary += (" Rain likely later: " + "; ".join(later[:4]) + ".") if later else " No rain expected for the rest of today."
+    this_hour = datetime.now().strftime("%Y-%m-%dT%H:00")
+    today = datetime.now().strftime("%Y-%m-%d")
+    hours = [
+        {"date": t[:10], "time": t[11:16], "temp": temp, "rain": rain, "desc": WEATHER_WORDS.get(code, "rain")}
+        for t, temp, rain, code in zip(d["hourly"]["time"], d["hourly"]["temperature_2m"],
+                                       d["hourly"]["precipitation_probability"], d["hourly"]["weather_code"])
+        if t > this_hour
+    ]
+    return {
+        "city": CITY,
+        "temp": round(now["temperature_2m"]),
+        "feels": round(now["apparent_temperature"]),
+        "humidity": now["relative_humidity_2m"],
+        "wind": round(now["wind_speed_10m"]),
+        "desc": WEATHER_WORDS.get(now["weather_code"], "unknown"),
+        "next_hours": hours[:6],
+        "rain_later_today": [h for h in hours if (h["rain"] or 0) >= 40 and h["date"] == today][:4],
+    }
+
+
+def weather() -> str:
+    """Penang weather as one sentence (for the yapper's AI prompt)."""
+    w = weather_data()
+    today_rain = w["rain_later_today"]
+    summary = (f"{w['city']} now: {w['temp']}°C, feels like {w['feels']}°C, {w['desc']}, humidity {w['humidity']}%.")
+    if today_rain:
+        summary += " Rain likely in the next hours: " + "; ".join(f"{h['time']} {h['rain']}% chance ({h['desc']})" for h in today_rain) + "."
+    else:
+        summary += " No rain expected in the next hours."
     return summary
 
 

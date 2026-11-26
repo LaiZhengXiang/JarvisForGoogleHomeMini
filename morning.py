@@ -18,7 +18,7 @@ LOG_FILE = Path(__file__).parent / "logs" / "jarvis.log"
 def morning_message() -> str:
     now = datetime.now()
     day = now.strftime("%A, %d %B").replace(" 0", " ")  # "Thursday, 27 November"
-    return f"Good morning Zheng Xiang. It's {day}, {now:%I:%M %p}. Time to start the day!"
+    return f"Good morning Alex. It's {day}, {now:%I:%M %p}. Time to start the day!"
 
 
 if __name__ == "__main__":
