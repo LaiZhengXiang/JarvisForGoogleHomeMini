@@ -2,19 +2,25 @@
 Step 3 - The JARVIS server (the always-awake brain).
 
 Start it:   .venv\\Scripts\\python server.py
-Then open:  http://127.0.0.1:8000/docs   (FastAPI's built-in test page)
+Then open:  http://127.0.0.1:8000        (the dashboard, step 4)
+            http://127.0.0.1:8000/docs   (FastAPI's built-in test page)
 
 Endpoints:
   GET  /api/status   is JARVIS alive? which speaker?
   POST /api/say      {"text": "..."}                       -> the Home Mini says it
   POST /api/chat     {"message": "...", "speak": true}     -> JARVIS thinks, answers,
                                                               and (optionally) says it
+  GET  /api/history  the conversation so far (the dashboard loads it on start)
+  POST /api/history/clear   start a new conversation
 """
 
 from contextlib import asynccontextmanager
+from pathlib import Path
 
 import uvicorn
 from fastapi import BackgroundTasks, FastAPI, HTTPException
+from fastapi.responses import FileResponse
+from fastapi.staticfiles import StaticFiles
 from pydantic import BaseModel
 
 import brain
@@ -29,6 +35,7 @@ HISTORY_LIMIT = 20        # only send the last 20 messages to the AI, to keep it
 async def lifespan(app: FastAPI):
     global mouth
     mouth = Mouth()  # start the MP3 web server when JARVIS wakes up
+    mouth.warm_up()  # and look for the Home Mini straight away
     print("[jarvis] awake")
     yield
     mouth.close()
@@ -36,6 +43,14 @@ async def lifespan(app: FastAPI):
 
 
 app = FastAPI(title="JARVIS", lifespan=lifespan)
+
+STATIC = Path(__file__).parent / "static"
+app.mount("/static", StaticFiles(directory=STATIC), name="static")
+
+
+@app.get("/", include_in_schema=False)
+def dashboard():
+    return FileResponse(STATIC / "index.html")
 
 
 class SayRequest(BaseModel):
@@ -60,13 +75,24 @@ def status():
     return {"awake": True, "speaker": mouth.speaker_name, "messages_in_history": len(history)}
 
 
+@app.get("/api/history")
+def get_history():
+    return {"history": history}
+
+
+@app.post("/api/history/clear")
+def clear_history():
+    history.clear()
+    return {"cleared": True}
+
+
 @app.post("/api/say")
 def say(req: SayRequest):
     text = req.text.strip()
     if not text:
         raise HTTPException(400, "Nothing to say.")
     try:
-        mouth.say(text)  # waits until it's spoken, so you know it worked
+        mouth.say(brain.for_speaking(text))  # waits until it's spoken, so you know it worked
     except MouthError as e:
         raise HTTPException(503, str(e))
     return {"said": text}

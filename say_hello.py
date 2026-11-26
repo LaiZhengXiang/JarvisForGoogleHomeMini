@@ -14,6 +14,8 @@ Run:  python say_hello.py
 """
 
 import http.server
+import queue
+import re
 import socket
 import sys
 import threading
@@ -31,13 +33,13 @@ AUDIO_DIR = Path(__file__).parent / "audio"
 # Voices. edge-tts uses Microsoft's natural "neural" voices (free, no key needed).
 # Hear them all:  .venv\Scripts\edge-tts --list-voices
 VOICES = {
-    "en": "en-IE-ConnorNeural",    # Irish gentleman (picked by ear on the Home Mini)
-    "zh": "zh-CN-YunyangNeural",   # steady Mandarin man, newsreader style
+    "en": "en-US-AndrewMultilingualNeural",  # warm "conversation" voice (picked by ear)
+    "zh": "zh-CN-YunjianNeural",             # energetic Mandarin man (picked by ear)
 }
 # Tuning per language: rate = speed, pitch = how deep. Lower + slower = calmer, more "gentleman".
 VOICE_TUNING = {
-    "en": {"rate": "+5%", "pitch": "-4Hz"},
-    "zh": {"rate": "+2%", "pitch": "-6Hz"},
+    "en": {"rate": "+0%", "pitch": "+0Hz"},
+    "zh": {"rate": "+0%", "pitch": "+0Hz"},
 }
 
 LEAD_IN_SECONDS = 1.0  # silence before the words, so the speaker is awake when they start
@@ -84,8 +86,8 @@ def mp3_seconds(mp3: Path) -> float:
     return len(data) / frame_bytes * frame_seconds
 
 
-def make_mp3(text: str) -> Path:
-    """Job 1: text -> MP3 file, with a little silence in front.
+def make_mp3(text: str, lead_in: bool = True) -> Path:
+    """Job 1: text -> MP3 file, with a little silence in front (if lead_in).
 
     The Home Mini's amplifier sleeps when idle and swallows the first moment of
     sound while it wakes up. Without the silence, short lines like "hi" vanish.
@@ -98,6 +100,8 @@ def make_mp3(text: str) -> Path:
     mp3 = AUDIO_DIR / f"msg-{time.time_ns()}.mp3"
     _tts(text, mp3)
 
+    if not lead_in:
+        return mp3
     speech = mp3.read_bytes()
     header = speech[:4]  # copy the exact MP3 format the voice used
     frame_bytes, frame_seconds = frame_info(header)
@@ -164,28 +168,74 @@ def find_speaker():
     return casts[0], browser
 
 
-def speak(speaker, text: str) -> bool:
-    """Job 3b: make the speaker say one line. Returns False if it never downloaded the MP3.
-    The web server must already be running."""
-    mp3 = make_mp3(text)
-    url = f"http://{laptop_ip()}:{PORT}/{mp3.name}?t={time.time()}"  # ?t= stops caching
-    print(f'Speaking on "{speaker.cast_info.friendly_name}": {text}')
+# Split after . ! ? followed by a space (so "3.5" stays whole), after 。！？；, or at new lines.
+SENTENCE_END = re.compile(r"(?<=[.!?;])\s+|(?<=[。！？；])\s*|\n+")
+CHUNK_CHARS = 200  # later pieces can be longer: fewer gaps, and there's time to prepare them
 
-    # Sometimes the first request is lost while the speaker starts its player,
-    # so we try up to 3 times until the speaker actually downloads the file.
-    mc = speaker.media_controller
+
+def split_for_speaking(text: str) -> list[str]:
+    """First piece = first sentence only (so speaking starts fast).
+    The rest = sentences grouped into pieces of up to ~200 characters."""
+    sentences = [x.strip() for x in SENTENCE_END.split(text) if x and x.strip()]
+    if not sentences:
+        return []
+    pieces = [sentences[0]]
+    current = ""
+    for sentence in sentences[1:]:
+        if current and len(current) + len(sentence) > CHUNK_CHARS:
+            pieces.append(current)
+            current = ""
+        gap = "" if pick_language(sentence) == "zh" else " "  # Chinese has no spaces between sentences
+        current = f"{current}{gap}{sentence}".strip()
+    if current:
+        pieces.append(current)
+    return pieces
+
+
+def _play_one(mc, mp3: Path) -> bool:
+    """Ask the speaker to play one MP3. Retries until it actually downloads it."""
+    url = f"http://{laptop_ip()}:{PORT}/{mp3.name}?t={time.time()}"  # ?t= stops caching
     downloaded.clear()
     for attempt in range(3):
         mc.play_media(url, "audio/mpeg")
         if downloaded.wait(timeout=8):
-            break
+            return True
         print("  no download yet, asking again...")
-    else:
-        return False
+    return False
 
-    # Wait while it talks (length worked out from the MP3 frames).
-    seconds = mp3_seconds(mp3)
-    time.sleep(seconds + 2)
+
+def speak(speaker, text: str) -> bool:
+    """Job 3b: make the speaker say some text. Returns False if it never downloaded the MP3.
+    The web server must already be running.
+
+    Long text is spoken piece by piece: while piece 1 is playing, a helper thread
+    is already making the MP3 for piece 2, so you never wait for the whole reply."""
+    pieces = split_for_speaking(text)
+    if not pieces:
+        return True
+    print(f'Speaking on "{speaker.cast_info.friendly_name}": {text}')
+
+    ready: queue.Queue = queue.Queue()
+
+    def prepare_all():  # the helper thread: makes MP3s one after another
+        for i, piece in enumerate(pieces):
+            try:
+                ready.put(make_mp3(piece, lead_in=(i == 0)))  # only the first needs the wake-up silence
+            except Exception as e:
+                print(f"  couldn't make the voice for a piece: {e}")
+                ready.put(None)
+
+    threading.Thread(target=prepare_all, daemon=True).start()
+
+    mc = speaker.media_controller
+    for i in range(len(pieces)):
+        mp3 = ready.get()  # waits only if this piece isn't ready yet
+        if mp3 is None:
+            continue
+        if not _play_one(mc, mp3):
+            return False
+        time.sleep(mp3_seconds(mp3))  # let it finish talking before the next piece
+    time.sleep(1)
     return True
 
 

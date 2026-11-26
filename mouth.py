@@ -34,6 +34,17 @@ class Mouth:
             self.browser.stop_discovery()
         self.speaker = self.browser = None
 
+    def warm_up(self):
+        """Find the speaker in the background when JARVIS starts, so the dashboard shows it."""
+        def connect():
+            with self.lock:
+                if self.speaker is None:
+                    try:
+                        self._connect()
+                    except MouthError as e:
+                        print(f"[mouth] {e}")
+        threading.Thread(target=connect, daemon=True).start()
+
     @property
     def speaker_name(self) -> str | None:
         return self.speaker.cast_info.friendly_name if self.speaker else None

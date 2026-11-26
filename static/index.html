@@ -1,0 +1,75 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>JARVIS</title>
+  <link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 32'><circle cx='16' cy='16' r='11' fill='none' stroke='%234fd1ff' stroke-width='3'/><circle cx='16' cy='16' r='4' fill='%234fd1ff'/></svg>">
+  <link rel="stylesheet" href="/static/style.css">
+</head>
+<body>
+  <div class="app">
+    <header class="top">
+      <div class="brand">
+        <span class="reactor" aria-hidden="true"></span>
+        <div>
+          <h1>JARVIS</h1>
+          <p class="sub">Personal assistant</p>
+        </div>
+      </div>
+      <div class="status" id="status" title="Speaker status">
+        <span class="dot"></span><span id="status-text">Connecting…</span>
+      </div>
+    </header>
+
+    <main class="layout">
+      <section class="chat" aria-label="Chat with JARVIS">
+        <div class="chat-head">
+          <h2>Chat</h2>
+          <div class="chat-tools">
+            <label class="switch" title="Also say JARVIS's replies on the Home Mini">
+              <input type="checkbox" id="speak-toggle" checked>
+              <span class="track"><span class="thumb"></span></span>
+              <span class="switch-label">Speak replies</span>
+            </label>
+            <button class="ghost" id="clear-btn" title="Start a new conversation">New chat</button>
+          </div>
+        </div>
+
+        <div class="messages" id="messages" aria-live="polite">
+          <div class="empty" id="empty">
+            <span class="reactor big" aria-hidden="true"></span>
+            <p>Good to see you, Zheng Xiang.<br>Ask me anything — in English or 中文.</p>
+          </div>
+        </div>
+
+        <form class="composer" id="chat-form">
+          <textarea id="chat-input" rows="1" placeholder="Message JARVIS…" title="Enter to send, Shift+Enter for a new line" autocomplete="off"></textarea>
+          <button type="submit" class="primary" id="send-btn" aria-label="Send">
+            <svg viewBox="0 0 24 24" width="20" height="20" aria-hidden="true"><path d="M4 12l16-8-6 16-2.5-6.5L4 12z" fill="currentColor"/></svg>
+          </button>
+        </form>
+      </section>
+
+      <aside class="side">
+        <section class="card">
+          <h2>Say this</h2>
+          <p class="hint">The Home Mini says exactly what you type. No AI.</p>
+          <form id="say-form">
+            <textarea id="say-input" rows="3" placeholder="e.g. Dinner is ready! 吃饭啦！"></textarea>
+            <button type="submit" class="primary wide" id="say-btn">🔊 Say it</button>
+          </form>
+          <p class="note" id="say-note"></p>
+        </section>
+
+        <section class="card soon">
+          <h2>Reminders <span class="tag">Step 5</span></h2>
+          <p class="hint">Coming next: “11:45 – submit lab”, “12:00 daily – lunch”. JARVIS will speak them on time.</p>
+        </section>
+      </aside>
+    </main>
+  </div>
+
+  <script src="/static/app.js"></script>
+</body>
+</html>

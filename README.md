@@ -8,7 +8,7 @@ The laptop is the brain (Python); the Home Mini is just the mouth.
 - [x] **1. Mouth test** – Python makes the Home Mini say "Hello Zheng Xiang"
 - [x] **2. Timer** – the script runs by itself at 8am
 - [x] **3. Brain server** – JARVIS runs nonstop (FastAPI); chat with AI (Groq first, Gemini backup)
-- [ ] **4. Dashboard** – a chat page and a "say this" box, like UniLife Copilot
+- [x] **4. Dashboard** – a chat page and a "say this" box, like UniLife Copilot
 - [ ] **5. Reminders** – any time (8:00, 11:45, ...), once or daily, set from the dashboard or by chat
 - [ ] **6. Agent** – UniLife deadlines, news, PDFs, songs
 
@@ -58,15 +58,21 @@ Needs a `.env` file (never committed) with `GROQ_API_KEY=...` and, for the backu
 .venv\Scripts\python server.py
 ```
 
-Open http://127.0.0.1:8000/docs to try it:
+Open **http://127.0.0.1:8000** for the dashboard (chat, "Say this", speaker status),
+or http://127.0.0.1:8000/docs to try the API directly:
 
 | Endpoint | What it does |
 |---|---|
 | `GET /api/status` | Is JARVIS awake? Which speaker? |
 | `POST /api/say` `{"text": "..."}` | The Home Mini says the text |
 | `POST /api/chat` `{"message": "...", "speak": true}` | JARVIS answers (and says it out loud) |
+| `GET /api/history` | The conversation so far |
+| `POST /api/history/clear` | Start a new conversation |
 
-Files: `brain.py` (AI), `mouth.py` (speaker connection that stays open), `server.py` (FastAPI).
+Files: `brain.py` (AI), `mouth.py` (speaker connection that stays open), `server.py` (FastAPI), `static/` (the dashboard).
+
+Long replies are spoken sentence by sentence: the first sentence starts in about a second,
+while the rest is prepared in the background.
 
 ### Voices
 
@@ -75,6 +81,6 @@ Change them in `VOICES` / `VOICE_TUNING` at the top of `say_hello.py`.
 
 | Language | Voice | Tuning |
 |---|---|---|
-| English | `en-IE-ConnorNeural` (Irish gentleman) | +5% speed, -4 Hz pitch |
-| Chinese | `zh-CN-YunyangNeural` (steady Mandarin man) | +2% speed, -6 Hz pitch |
+| English | `en-US-AndrewMultilingualNeural` (warm conversation voice) | none |
+| Chinese | `zh-CN-YunjianNeural` (energetic Mandarin man) | none |
 
