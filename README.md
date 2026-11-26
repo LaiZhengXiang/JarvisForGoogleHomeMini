@@ -8,7 +8,8 @@ The laptop is the brain (Python); the Home Mini is just the mouth.
 - [x] **1. Mouth test** – Python makes the Home Mini say "Hello Zheng Xiang"
 - [ ] **2. Timer** – the script runs by itself at 8am
 - [ ] **3. Brain** – Gemini writes the message (reminders, a joke, a fun news story)
-- [ ] **4. Agent** – it checks UniLife deadlines before speaking
+- [ ] **4. Dashboard** – a web page (FastAPI) to type messages, set the schedule and see a log
+- [ ] **5. Agent** – it checks UniLife deadlines before speaking
 
 ## Run step 1
 
