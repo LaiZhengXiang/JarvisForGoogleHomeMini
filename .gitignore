@@ -4,3 +4,4 @@ audio/
 .env
 *.db
 logs/
+.claude/

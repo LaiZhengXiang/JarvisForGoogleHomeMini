@@ -7,9 +7,10 @@ The laptop is the brain (Python); the Home Mini is just the mouth.
 
 - [x] **1. Mouth test** – Python makes the Home Mini say "Hello Zheng Xiang"
 - [x] **2. Timer** – the script runs by itself at 8am
-- [ ] **3. Brain** – Gemini writes the message (reminders, a joke, a fun news story)
-- [ ] **4. Dashboard** – a web page (FastAPI) to type messages, set the schedule and see a log
-- [ ] **5. Agent** – it checks UniLife deadlines before speaking
+- [x] **3. Brain server** – JARVIS runs nonstop (FastAPI); chat with AI (Groq first, Gemini backup)
+- [ ] **4. Dashboard** – a chat page and a "say this" box, like UniLife Copilot
+- [ ] **5. Reminders** – any time (8:00, 11:45, ...), once or daily, set from the dashboard or by chat
+- [ ] **6. Agent** – UniLife deadlines, news, PDFs, songs
 
 ## Run step 1
 
@@ -48,4 +49,22 @@ Unregister-ScheduledTask -TaskName "JARVIS morning" -Confirm:$false    # remove 
 
 There's no window when it runs on the timer, so check `logs/jarvis.log` to see what happened.
 The laptop must be on, or asleep **and plugged in** (Windows only wakes it for tasks on mains power).
+
+## Step 3: the JARVIS server
+
+Needs a `.env` file (never committed) with `GROQ_API_KEY=...` and, for the backup, `GEMINI_API_KEY=...`.
+
+```powershell
+.venv\Scripts\python server.py
+```
+
+Open http://127.0.0.1:8000/docs to try it:
+
+| Endpoint | What it does |
+|---|---|
+| `GET /api/status` | Is JARVIS awake? Which speaker? |
+| `POST /api/say` `{"text": "..."}` | The Home Mini says the text |
+| `POST /api/chat` `{"message": "...", "speak": true}` | JARVIS answers (and says it out loud) |
+
+Files: `brain.py` (AI), `mouth.py` (speaker connection that stays open), `server.py` (FastAPI).
 

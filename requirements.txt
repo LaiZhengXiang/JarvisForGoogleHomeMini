@@ -1,2 +1,6 @@
 pychromecast
 gTTS
+requests
+python-dotenv
+fastapi
+uvicorn
