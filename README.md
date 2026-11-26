@@ -84,3 +84,6 @@ Change them in `VOICES` / `VOICE_TUNING` at the top of `say_hello.py`.
 | English | `en-US-AndrewMultilingualNeural` (warm conversation voice) | none |
 | Chinese | `zh-CN-YunjianNeural` (energetic Mandarin man) | none |
 
+**Radio effect:** `radio.py` gives the voice a light earpiece / comms-channel sound (band-pass filter, a little drive and hiss).
+Turn it off with `RADIO_EFFECT = False` in `say_hello.py`, or change the strength in `radio.SETTINGS`.
+

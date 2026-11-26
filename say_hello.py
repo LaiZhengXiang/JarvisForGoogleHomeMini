@@ -24,6 +24,8 @@ from pathlib import Path
 
 import edge_tts
 import pychromecast
+
+import radio
 from gtts import gTTS
 
 SPEAKER_NAME = None  # e.g. "Bedroom speaker". None = use the first Google speaker found.
@@ -41,6 +43,8 @@ VOICE_TUNING = {
     "en": {"rate": "+0%", "pitch": "+0Hz"},
     "zh": {"rate": "+0%", "pitch": "+0Hz"},
 }
+
+RADIO_EFFECT = True  # earpiece / comms-channel sound (see radio.py). False = clean voice.
 
 LEAD_IN_SECONDS = 1.0  # silence before the words, so the speaker is awake when they start
 
@@ -99,6 +103,11 @@ def make_mp3(text: str, lead_in: bool = True) -> Path:
     # A new name each time, so two scripts speaking at once don't overwrite each other.
     mp3 = AUDIO_DIR / f"msg-{time.time_ns()}.mp3"
     _tts(text, mp3)
+    if RADIO_EFFECT:
+        try:
+            radio.make_radio(mp3)
+        except Exception as e:  # never go silent because of the effect
+            print(f"  radio effect failed ({e}), using the clean voice")
 
     if not lead_in:
         return mp3
