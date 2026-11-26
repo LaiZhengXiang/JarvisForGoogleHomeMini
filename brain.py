@@ -93,8 +93,9 @@ def think(messages: list[dict]) -> str:
 
 
 def for_speaking(text: str) -> str:
-    """Remove markdown symbols, so the speaker doesn't read out 'asterisk'."""
-    text = re.sub(r"[*_#`>|~]", "", text)
+    """Remove symbols the voice would read out loud: markdown (* # ...) and
+    quote marks in English and Chinese (" “ ” ‘ ’ 「 」 『 』)."""
+    text = re.sub(r"[*_#`>|~\"“”‘’「」『』]", "", text)
     return re.sub(r"\s+", " ", text).strip()
 
 

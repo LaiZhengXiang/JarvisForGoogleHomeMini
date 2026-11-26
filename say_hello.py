@@ -20,6 +20,7 @@ import threading
 import time
 from pathlib import Path
 
+import edge_tts
 import pychromecast
 from gtts import gTTS
 
@@ -27,18 +28,60 @@ SPEAKER_NAME = None  # e.g. "Bedroom speaker". None = use the first Google speak
 PORT = 0  # filled in when the web server starts
 AUDIO_DIR = Path(__file__).parent / "audio"
 
+# Voices. edge-tts uses Microsoft's natural "neural" voices (free, no key needed).
+# Hear them all:  .venv\Scripts\edge-tts --list-voices
+VOICES = {
+    "en": "en-IE-ConnorNeural",    # Irish gentleman (picked by ear on the Home Mini)
+    "zh": "zh-CN-YunyangNeural",   # steady Mandarin man, newsreader style
+}
+# Tuning per language: rate = speed, pitch = how deep. Lower + slower = calmer, more "gentleman".
+VOICE_TUNING = {
+    "en": {"rate": "+5%", "pitch": "-4Hz"},
+    "zh": {"rate": "+2%", "pitch": "-6Hz"},
+}
 
 LEAD_IN_SECONDS = 1.0  # silence before the words, so the speaker is awake when they start
-FRAME_BYTES = 192      # gTTS MP3: 64 kbps, 24 kHz -> each frame is 192 bytes...
-FRAME_SECONDS = 0.024  # ...and lasts 24 ms
 
 
 def pick_language(text: str) -> str:
-    """Any Chinese character -> Mandarin voice, otherwise English.
+    """Any Chinese character -> "zh", otherwise "en".
     (The Mandarin voice can still read English words mixed in.)"""
     if any("一" <= ch <= "鿿" for ch in text):
-        return "zh-CN"
+        return "zh"
     return "en"
+
+
+def _tts(text: str, path: Path) -> None:
+    """Text -> MP3. Natural edge-tts voice first; the plain Google voice as backup."""
+    lang = pick_language(text)
+    try:
+        edge_tts.Communicate(text, VOICES[lang], **VOICE_TUNING[lang]).save_sync(str(path))
+        if path.stat().st_size > 0:
+            return
+    except Exception as e:
+        print(f"  edge-tts failed ({e}), using the Google voice instead")
+    gTTS(text=text, lang="zh-CN" if lang == "zh" else "en").save(path)
+
+
+def frame_info(header: bytes) -> tuple[int, float]:
+    """Read an MP3 frame header -> (bytes per frame, seconds per frame).
+    Both voices give MPEG-2 Layer III, but this also handles MPEG-1."""
+    mpeg1 = (header[1] >> 3) & 1
+    bitrate_i = header[2] >> 4
+    rate_i = (header[2] >> 2) & 3
+    if mpeg1:
+        kbps = [0, 32, 40, 48, 56, 64, 80, 96, 112, 128, 160, 192, 224, 256, 320][bitrate_i]
+        hz = [44100, 48000, 32000][rate_i]
+        return 144 * kbps * 1000 // hz, 1152 / hz
+    kbps = [0, 8, 16, 24, 32, 40, 48, 56, 64, 80, 96, 112, 128, 144, 160][bitrate_i]
+    hz = [22050, 24000, 16000][rate_i]
+    return 72 * kbps * 1000 // hz, 576 / hz
+
+
+def mp3_seconds(mp3: Path) -> float:
+    data = mp3.read_bytes()
+    frame_bytes, frame_seconds = frame_info(data[:4])
+    return len(data) / frame_bytes * frame_seconds
 
 
 def make_mp3(text: str) -> Path:
@@ -48,17 +91,18 @@ def make_mp3(text: str) -> Path:
     sound while it wakes up. Without the silence, short lines like "hi" vanish.
     """
     AUDIO_DIR.mkdir(exist_ok=True)
-    for old in AUDIO_DIR.glob("msg-*.mp3"):  # tidy up clips older than 1 hour
+    for old in AUDIO_DIR.glob("*.mp3"):  # tidy up clips older than 1 hour
         if time.time() - old.stat().st_mtime > 3600:
             old.unlink(missing_ok=True)
     # A new name each time, so two scripts speaking at once don't overwrite each other.
     mp3 = AUDIO_DIR / f"msg-{time.time_ns()}.mp3"
-    gTTS(text=text, lang=pick_language(text)).save(mp3)
+    _tts(text, mp3)
 
     speech = mp3.read_bytes()
-    header = speech[:4]  # copy the exact MP3 format gTTS used
-    silent_frame = header + bytes(FRAME_BYTES - 4)  # all zeros after the header = silence
-    frames = int(LEAD_IN_SECONDS / FRAME_SECONDS)
+    header = speech[:4]  # copy the exact MP3 format the voice used
+    frame_bytes, frame_seconds = frame_info(header)
+    silent_frame = header + bytes(frame_bytes - 4)  # all zeros after the header = silence
+    frames = int(LEAD_IN_SECONDS / frame_seconds)
     mp3.write_bytes(silent_frame * frames + speech)
     return mp3
 
@@ -139,8 +183,8 @@ def speak(speaker, text: str) -> bool:
     else:
         return False
 
-    # Wait while it talks: number of frames x 24 ms each.
-    seconds = mp3.stat().st_size / FRAME_BYTES * FRAME_SECONDS
+    # Wait while it talks (length worked out from the MP3 frames).
+    seconds = mp3_seconds(mp3)
     time.sleep(seconds + 2)
     return True
 

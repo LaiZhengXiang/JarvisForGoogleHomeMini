@@ -68,3 +68,13 @@ Open http://127.0.0.1:8000/docs to try it:
 
 Files: `brain.py` (AI), `mouth.py` (speaker connection that stays open), `server.py` (FastAPI).
 
+### Voices
+
+JARVIS speaks with Microsoft's natural neural voices through `edge-tts` (free, no key), and falls back to the plain Google voice if that fails.
+Change them in `VOICES` / `VOICE_TUNING` at the top of `say_hello.py`.
+
+| Language | Voice | Tuning |
+|---|---|---|
+| English | `en-IE-ConnorNeural` (Irish gentleman) | +5% speed, -4 Hz pitch |
+| Chinese | `zh-CN-YunyangNeural` (steady Mandarin man) | +2% speed, -6 Hz pitch |
+
