@@ -24,7 +24,7 @@ import pychromecast
 from gtts import gTTS
 
 SPEAKER_NAME = None  # e.g. "Bedroom speaker". None = use the first Google speaker found.
-PORT = 8765
+PORT = 0  # filled in when the web server starts
 AUDIO_DIR = Path(__file__).parent / "audio"
 
 
@@ -48,7 +48,11 @@ def make_mp3(text: str) -> Path:
     sound while it wakes up. Without the silence, short lines like "hi" vanish.
     """
     AUDIO_DIR.mkdir(exist_ok=True)
-    mp3 = AUDIO_DIR / "message.mp3"
+    for old in AUDIO_DIR.glob("msg-*.mp3"):  # tidy up clips older than 1 hour
+        if time.time() - old.stat().st_mtime > 3600:
+            old.unlink(missing_ok=True)
+    # A new name each time, so two scripts speaking at once don't overwrite each other.
+    mp3 = AUDIO_DIR / f"msg-{time.time_ns()}.mp3"
     gTTS(text=text, lang=pick_language(text)).save(mp3)
 
     speech = mp3.read_bytes()
@@ -87,7 +91,11 @@ class AudioHandler(http.server.SimpleHTTPRequestHandler):
 
 def start_web_server() -> http.server.ThreadingHTTPServer:
     """Job 2: share the audio folder on the Wi-Fi so the Home Mini can download it."""
-    server = http.server.ThreadingHTTPServer(("0.0.0.0", PORT), AudioHandler)
+    # Port 0 = "Windows, give me any free port". A fixed port would clash when two
+    # scripts run at once (talk.py + the 8am timer) - Windows lets both grab it.
+    global PORT
+    server = http.server.ThreadingHTTPServer(("0.0.0.0", 0), AudioHandler)
+    PORT = server.server_address[1]
     threading.Thread(target=server.serve_forever, daemon=True).start()
     return server
 
