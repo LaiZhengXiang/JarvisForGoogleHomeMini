@@ -11,7 +11,7 @@
   <link rel="stylesheet" href="/static/style.css">
 </head>
 <body class="idle">
-  <div class="grid-bg" aria-hidden="true"></div>
+  <div id="rain"></div>
   <div class="scanlines" aria-hidden="true"></div>
 
   <header class="topbar">
@@ -74,28 +74,24 @@
         </div>
         <p class="note" id="yap-note"></p>
       </section>
+
+      <section class="panel" id="rem-card">
+        <h2>Reminders</h2>
+        <ul class="rem-list" id="rem-list"><li class="mono dim small">None yet. Try “remind me in 10 minutes to stretch”.</li></ul>
+        <form class="rem-form" id="rem-form">
+          <input type="time" id="rem-time" required aria-label="Time">
+          <input type="text" id="rem-text" placeholder="Remind me to…" required aria-label="Reminder">
+          <label class="check mono small"><input type="checkbox" id="rem-daily"> DAILY</label>
+          <button class="btn" type="submit">Add</button>
+        </form>
+        <p class="note" id="rem-note"></p>
+      </section>
     </aside>
 
     <!-- ================= CENTER: the core ================= -->
     <section class="col center">
       <div class="core-wrap">
-        <svg class="core" viewBox="0 0 400 400" aria-hidden="true">
-          <defs>
-            <radialGradient id="glow" cx="50%" cy="50%" r="50%">
-              <stop offset="0%" stop-color="#d9f6ff" stop-opacity="1"/>
-              <stop offset="35%" stop-color="#45d6ff" stop-opacity="0.85"/>
-              <stop offset="100%" stop-color="#45d6ff" stop-opacity="0"/>
-            </radialGradient>
-          </defs>
-          <circle class="ring r1" cx="200" cy="200" r="190"/>
-          <circle class="ring r2" cx="200" cy="200" r="172"/>
-          <g class="ticks" id="ticks"></g>
-          <circle class="ring r3" cx="200" cy="200" r="128"/>
-          <circle class="ring r4" cx="200" cy="200" r="108"/>
-          <circle class="halo" cx="200" cy="200" r="95" fill="url(#glow)"/>
-          <circle class="ring r5" cx="200" cy="200" r="62"/>
-          <circle class="heart" cx="200" cy="200" r="34"/>
-        </svg>
+        <div class="orb" id="orb" aria-hidden="true"></div>
         <div class="core-label mono" id="core-label">STANDING BY</div>
       </div>
 
@@ -138,6 +134,8 @@
     </aside>
   </main>
 
+  <script src="/static/orb.js"></script>
+  <script src="/static/rain.js"></script>
   <script src="/static/app.js"></script>
 </body>
 </html>

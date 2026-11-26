@@ -1,7 +1,7 @@
 /* JARVIS HUD - holographic blue, rotating rings, scan lines. */
 :root {
   --bg: #020812;
-  --panel: rgba(8, 28, 48, 0.55);
+  --panel: rgba(6, 18, 34, 0.72);
   --line: rgba(69, 214, 255, 0.28);
   --line-strong: rgba(69, 214, 255, 0.7);
   --cyan: #45d6ff;
@@ -29,15 +29,26 @@ body {
 .small { font-size: 12px; }
 h1, h2 { font-family: Orbitron, "Segoe UI", sans-serif; font-weight: 500; margin: 0; }
 
-/* ---------- background ---------- */
-.grid-bg {
-  position: fixed; inset: 0; pointer-events: none; z-index: 0;
-  background-image:
-    linear-gradient(rgba(69, 214, 255, 0.05) 1px, transparent 1px),
-    linear-gradient(90deg, rgba(69, 214, 255, 0.05) 1px, transparent 1px);
-  background-size: 48px 48px;
-  mask-image: radial-gradient(ellipse at center, #000 30%, transparent 80%);
+/* ---------- background: data rain (rain.js) ---------- */
+.dr-root {
+  --dr-bg-0: #020308; --dr-bg-1: #05070d; --dr-bg-2: #0a1020;
+  --dr-calm: #22e6ff; --dr-mid: #8a5cff; --dr-hot: #ff3d9a; --dr-core: #eafcff;
+  --dr-vignette: 0.62; --dr-grain: 0.05; --dr-bloom-blur: 10px; --dr-bloom-opacity: 0.7;
+  position: fixed; inset: 0; z-index: 0; pointer-events: none; overflow: hidden;
+  background: radial-gradient(ellipse at 50% 42%, var(--dr-bg-2) 0%, var(--dr-bg-1) 55%, var(--dr-bg-0) 100%);
+  opacity: 0.55; transition: opacity 1.2s ease;  /* dimmer while JARVIS is quiet */
+  animation: dr-fade-in 1.4s ease-out both;
 }
+body.thinking .dr-root { opacity: 0.75; }
+body.speaking .dr-root { opacity: 1; transition-duration: 0.5s; }
+.dr-root canvas { position: absolute; inset: 0; width: 100%; height: 100%; display: block; }
+.dr-bloom { filter: blur(var(--dr-bloom-blur)); opacity: var(--dr-bloom-opacity); }
+.dr-vignette { position: absolute; inset: 0; background: radial-gradient(ellipse at center, transparent 35%, rgba(0, 0, 0, var(--dr-vignette)) 100%); }
+.dr-grain {
+  position: absolute; inset: 0; opacity: var(--dr-grain); mix-blend-mode: overlay;
+  background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='160' height='160'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.9' numOctaves='2' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23n)'/%3E%3C/svg%3E");
+}
+@keyframes dr-fade-in { from { opacity: 0; } }
 .scanlines {
   position: fixed; inset: 0; pointer-events: none; z-index: 50;
   background: repeating-linear-gradient(0deg, rgba(255, 255, 255, 0.025) 0 1px, transparent 1px 3px);
@@ -103,24 +114,15 @@ h1, h2 { font-family: Orbitron, "Segoe UI", sans-serif; font-weight: 500; margin
 .rainbar { display: flex; flex-direction: column; align-items: center; gap: 3px; height: 100%; justify-content: flex-end; font-family: "Share Tech Mono", monospace; font-size: 10px; color: var(--dim); }
 .rainbar i { display: block; width: 100%; max-width: 22px; background: linear-gradient(to top, rgba(69, 214, 255, 0.25), var(--cyan)); box-shadow: 0 0 8px rgba(69, 214, 255, 0.4); transition: height 0.6s; min-height: 2px; }
 
-/* ---------- the core ---------- */
+/* ---------- the core: voice orb (orb.js) ---------- */
 .core-wrap { position: relative; width: min(46vh, 100%, 440px); aspect-ratio: 1; }
-.core { width: 100%; height: 100%; overflow: visible; filter: drop-shadow(0 0 10px rgba(69, 214, 255, 0.45)); }
-.core * { transform-origin: 200px 200px; transform-box: view-box; }
-.ring { fill: none; stroke: var(--cyan); }
-.r1 { stroke-width: 1.5; stroke-dasharray: 2 7; opacity: 0.7; animation: spin calc(70s * var(--spin)) linear infinite; }
-.r2 { stroke-width: 6; stroke-dasharray: 140 24 30 24 60 40; opacity: 0.55; animation: spin calc(40s * var(--spin)) linear infinite reverse; }
-.ticks line { stroke: var(--cyan); stroke-width: 2; opacity: 0.6; }
-.ticks line.long { stroke-width: 3; opacity: 1; }
-.ticks { animation: spin calc(120s * var(--spin)) linear infinite; }
-.r3 { stroke-width: 10; stroke-dasharray: 60 18; opacity: 0.45; animation: spin calc(24s * var(--spin)) linear infinite; }
-.r4 { stroke-width: 2; stroke-dasharray: 220 30 8 30; opacity: 0.9; animation: spin calc(16s * var(--spin)) linear infinite reverse; }
-.r5 { stroke-width: 3; stroke-dasharray: 30 10; opacity: 0.9; animation: spin calc(9s * var(--spin)) linear infinite; }
-.halo { opacity: 0.55; animation: breathe 4s ease-in-out infinite; }
-.heart { fill: #e7fbff; filter: drop-shadow(0 0 14px var(--cyan)); animation: breathe 4s ease-in-out infinite; }
+.orb {
+  --level: 0; position: absolute; inset: 0;
+  transform: scale(calc(1 + var(--level) * 0.08));  /* swells a little with his "voice" */
+}
+.orb canvas { display: block; width: 100%; height: 100%; }
+.orb-fallback { border-radius: 50%; background: radial-gradient(circle, #9be8ff 0%, #8a5cff 45%, transparent 70%); }
 @keyframes spin { to { transform: rotate(360deg); } }
-@keyframes breathe { 50% { opacity: 0.8; transform: scale(1.06); } }
-
 .core-label {
   position: absolute; left: 50%; bottom: -6px; transform: translateX(-50%);
   font-size: 12px; letter-spacing: 0.35em; color: var(--cyan); white-space: nowrap;
@@ -128,9 +130,6 @@ h1, h2 { font-family: Orbitron, "Segoe UI", sans-serif; font-weight: 500; margin
 
 /* states */
 body.thinking { --spin: 0.18; }
-body.thinking .heart { animation-duration: 0.8s; }
-body.speaking .heart, body.speaking .halo { animation: talk 0.45s ease-in-out infinite alternate; }
-@keyframes talk { from { transform: scale(0.95); opacity: 0.7; } to { transform: scale(1.12); opacity: 1; } }
 
 /* voice waveform */
 .wave { display: flex; gap: 4px; align-items: center; height: 34px; margin-top: 14px; }
@@ -203,3 +202,23 @@ button:disabled { opacity: 0.45; cursor: not-allowed; }
 @media (prefers-reduced-motion: reduce) {
   *, *::before, *::after { animation: none !important; transition: none !important; }
 }
+
+/* ---------- reminders ---------- */
+.left { overflow-y: auto; padding-right: 2px; }
+.left::-webkit-scrollbar { width: 4px; }
+.left::-webkit-scrollbar-thumb { background: var(--line-strong); }
+.rem-list { list-style: none; margin: 0 0 10px; padding: 0; display: flex; flex-direction: column; gap: 6px; max-height: 170px; overflow-y: auto; }
+.rem-list li.rem { display: grid; grid-template-columns: auto 1fr auto; gap: 8px; align-items: center; padding: 6px 8px; border-left: 2px solid var(--cyan); background: rgba(69, 214, 255, 0.06); font-size: 13px; }
+.rem-time { font-family: "Share Tech Mono", monospace; color: var(--cyan-soft); font-size: 14px; }
+.rem-time small { display: block; font-size: 10px; color: var(--dim); }
+.rem-tag { font-family: "Share Tech Mono", monospace; font-size: 10px; color: var(--warn); margin-left: 6px; }
+.rem-del { background: none; border: 0; color: var(--dim); font-size: 16px; line-height: 1; padding: 2px 4px; }
+.rem-del:hover { color: var(--bad); }
+.rem-form { display: grid; grid-template-columns: 96px 1fr; gap: 8px; }
+.rem-form input[type="time"], .rem-form input[type="text"] {
+  font: inherit; font-size: 14px; color: var(--text); background: rgba(2, 12, 24, 0.75);
+  border: 1px solid var(--line); padding: 8px 9px; outline: none; min-width: 0; color-scheme: dark;
+}
+.rem-form input:focus { border-color: var(--cyan); box-shadow: 0 0 0 1px var(--cyan); }
+.check { display: flex; align-items: center; gap: 6px; color: var(--dim); cursor: pointer; }
+.check input { accent-color: var(--cyan); }

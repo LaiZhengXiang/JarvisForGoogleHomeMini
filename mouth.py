@@ -63,7 +63,21 @@ class Mouth:
                 except Exception as e:
                     print(f"[mouth] problem talking to the speaker: {e}")
                 self._disconnect()
-            raise MouthError("The speaker didn't play it. Is it on the same Wi-Fi?")
+            raise MouthError(self._why_not())
+
+    def _why_not(self) -> str:
+        """A helpful reason when the speaker won't play our clip."""
+        try:
+            speaker, browser = say_hello.find_speaker()
+            speaker.wait(timeout=10)
+            app = speaker.app_display_name
+            busy = speaker.app_id not in (None, "CC1AD845", "E8C28D3C") and not speaker.is_idle
+            browser.stop_discovery()
+            if busy:
+                return f"The Home Mini is busy with \"{app}\". Stop that (or say \"Hey Google, stop\") and try again."
+        except (Exception, SystemExit):
+            pass
+        return "The speaker didn't play it. Is it on the same Wi-Fi?"
 
     def close(self):
         self._disconnect()

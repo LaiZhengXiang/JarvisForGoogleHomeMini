@@ -24,10 +24,23 @@ async function api(path, body) {
 // ---------- the core: idle / thinking / speaking ----------
 const LABELS = { idle: "STANDING BY", thinking: "PROCESSING", speaking: "SPEAKING" };
 
+// The orb in the middle and the data rain behind everything follow JARVIS's mood.
+const orb = window.JarvisOrb($("orb"));
+const rain = window.DataRain($("rain"), {
+  // the rain swirls around the orb, wherever it is on screen
+  focus: () => {
+    const r = $("orb").getBoundingClientRect();
+    return { x: r.left + r.width / 2, y: r.top + r.height / 2 };
+  },
+});
+const ENERGY = { idle: 0, thinking: 0.35, speaking: 1 };
+
 function setState(state) {
   document.body.classList.remove("idle", "thinking", "speaking");
   document.body.classList.add(state);
   $("core-label").textContent = LABELS[state];
+  orb.setMode(state);
+  rain.setEnergy(ENERGY[state]);
 }
 
 // The Home Mini doesn't tell us when it stops talking, so guess from the length of the text.
@@ -52,19 +65,8 @@ function showCaption(text) {
   }, 18);
 }
 
-// Draw the tick marks around the core and the waveform bars (once).
-(function buildCore() {
-  const g = $("ticks");
-  for (let i = 0; i < 72; i++) {
-    const long = i % 6 === 0;
-    const a = (i / 72) * Math.PI * 2;
-    const r1 = 150, r2 = long ? 162 : 157;
-    const line = document.createElementNS("http://www.w3.org/2000/svg", "line");
-    line.setAttribute("x1", 200 + r1 * Math.cos(a)); line.setAttribute("y1", 200 + r1 * Math.sin(a));
-    line.setAttribute("x2", 200 + r2 * Math.cos(a)); line.setAttribute("y2", 200 + r2 * Math.sin(a));
-    if (long) line.classList.add("long");
-    g.append(line);
-  }
+// Draw the waveform bars under the orb (once).
+(function buildWave() {
   const wave = $("wave");
   for (let i = 0; i < 28; i++) {
     const bar = document.createElement("span");
@@ -113,6 +115,7 @@ $("chat-form").addEventListener("submit", async (e) => {
     addMessage("jarvis", reply);
     showCaption(reply);
     if (speakToggle.checked) speakFor(reply); else setState("idle");
+    refreshReminders();
   } catch (err) {
     addMessage("error", err.message);
     showCaption("I couldn't answer that one. " + err.message);
@@ -229,6 +232,63 @@ $("yap-btn").addEventListener("click", async () => {
   }
 });
 
+// ---------- reminders ----------
+async function refreshReminders() {
+  try {
+    const { reminders } = await api("/api/reminders");
+    const list = $("rem-list");
+    list.innerHTML = "";
+    if (!reminders.length) {
+      list.innerHTML = '<li class="mono dim small">None yet. Try “remind me in 10 minutes to stretch”.</li>';
+      return;
+    }
+    const today = new Date().toISOString().slice(0, 10);
+    for (const r of reminders) {
+      const li = document.createElement("li");
+      li.className = "rem";
+      const when = document.createElement("span");
+      when.className = "rem-time";
+      when.innerHTML = `${r.time}<small>${r.repeat === "daily" ? "DAILY" : r.date === today ? "TODAY" : r.date.slice(5)}</small>`;
+      const text = document.createElement("span");
+      text.textContent = r.text.length > 70 ? r.text.slice(0, 70) + "…" : r.text;
+      if (r.kind === "think") {
+        const tag = document.createElement("span");
+        tag.className = "rem-tag";
+        tag.textContent = "AI";
+        text.append(tag);
+      }
+      const del = document.createElement("button");
+      del.className = "rem-del";
+      del.title = "Delete reminder";
+      del.setAttribute("aria-label", `Delete reminder at ${r.time}`);
+      del.textContent = "×";
+      del.addEventListener("click", async () => { await api(`/api/reminders/${r.id}/delete`, {}); refreshReminders(); });
+      li.append(when, text, del);
+      list.append(li);
+    }
+  } catch {}
+}
+
+$("rem-form").addEventListener("submit", async (e) => {
+  e.preventDefault();
+  const note = $("rem-note");
+  try {
+    await api("/api/reminders", {
+      time: $("rem-time").value,
+      text: $("rem-text").value,
+      repeat: $("rem-daily").checked ? "daily" : "once",
+    });
+    $("rem-text").value = "";
+    note.className = "note ok";
+    note.textContent = "✓ REMINDER SET";
+    refreshReminders();
+  } catch (err) {
+    note.className = "note bad";
+    note.textContent = err.message;
+  }
+  setTimeout(() => { note.textContent = ""; }, 4000);
+});
+
 // ---------- status, clock, weather ----------
 async function refreshStatus() {
   const box = $("status");
@@ -266,12 +326,13 @@ async function refreshWeather() {
 
 // ---------- start ----------
 loadHistory(true);
+refreshReminders();
 refreshStatus();
 refreshYapper();
 refreshWeather();
 tickClock();
 setInterval(tickClock, 1000);
 setInterval(refreshStatus, 10000);
-setInterval(() => { loadHistory(); refreshYapper(); }, 5000);
+setInterval(() => { loadHistory(); refreshYapper(); refreshReminders(); }, 5000);
 setInterval(refreshWeather, 10 * 60 * 1000);
 chatInput.focus();

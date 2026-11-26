@@ -32,10 +32,24 @@ Your words are spoken out loud by a Google Home Mini, so:
   mix short and longer sentences, and start naturally sometimes ("Alright,", "Well,", "Ooh,", "好啦，", "嗯，")
 - use commas where a person would take a small breath; avoid long lists and formal words
 Be warm, a little witty, and helpful.
-Be honest about what you can do. Right now you can only chat and speak on the Home Mini.
-You can NOT yet set reminders, read UniLife deadlines, check news or read PDFs.
-If he asks for one of those, say clearly that you can't do it yet (it's coming soon),
-so he doesn't rely on it. Never say "I'll remind you" or "I've set that"."""
+Be honest about what you can do. You can chat, speak on the Home Mini, and set reminders
+(only through the reminder lines described below). You also drop by on your own with weather,
+news and fun facts, but inside this chat you can't look up live news, weather or prices.
+You can NOT yet read UniLife deadlines or PDFs - say clearly that's coming soon if he asks."""
+
+REMINDER_RULES = """Current local time: {now}.
+His reminders right now: {reminders}
+
+REMINDERS: if he asks you to remind him (or to cancel a reminder), reply normally AND add one line
+per action at the very END of your reply, exactly like this (the app reads and hides these lines):
+REMINDER_ADD: {{"time": "HH:MM", "date": "YYYY-MM-DD or null", "repeat": "once or daily", "kind": "say", "text": "short reminder words"}}
+REMINDER_CANCEL: <id number>
+- work out times yourself ("in 10 minutes", "tomorrow 9am", "every day at noon" -> repeat daily, date null)
+- 24-hour time; "date": null means the next time that clock time comes round
+- "kind": "say" for normal reminders; "think" only when he wants you to compose something at that time
+  (e.g. "every morning at 8 brief me on the weather") - then "text" is your instruction to yourself
+- if the time is unclear, ask him instead of guessing, and add no line
+- in your spoken reply, confirm it simply ("Done, I'll remind you at 11:45 to submit your lab.")"""
 
 
 class BrainError(Exception):
@@ -76,10 +90,12 @@ def _ask_gemini(messages: list[dict]) -> str:
     return r.json()["candidates"][0]["content"]["parts"][0]["text"]
 
 
-def think(messages: list[dict]) -> str:
+def think(messages: list[dict], extra_system: str = "") -> str:
     """messages = [{"role": "user"/"assistant", "content": "..."}, ...]
+    extra_system = more instructions just for this call (e.g. the reminder rules).
     Returns JARVIS's answer as plain text."""
-    messages = [{"role": "system", "content": PERSONA}] + messages
+    system = PERSONA + ("\n\n" + extra_system if extra_system else "")
+    messages = [{"role": "system", "content": system}] + messages
 
     attempts = [(f"Groq {m}", lambda m=m, x=x: _ask_groq(m, x, messages)) for m, x in GROQ_MODELS]
     attempts.append(("Gemini", lambda: _ask_gemini(messages)))
